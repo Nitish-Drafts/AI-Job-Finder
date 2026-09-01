@@ -1,5 +1,7 @@
+import json
 import os
 from typing import Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,10 +54,24 @@ class Settings(BaseSettings):
     # CORS Settings
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost"]
 
+    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value):
+        """Allow either a JSON list or one comma-separated public URL."""
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"
+        extra="ignore",
+        enable_decoding=False,
     )
 
 
